@@ -39,11 +39,21 @@ def parse_patterns(raw: list[str] | None) -> list[tuple[str, str]]:
     return patterns
 
 
+def open_input(path: str | None):
+    """Open the input file by path, or return stdin if path is None."""
+    if path is None:
+        return sys.stdin
+    try:
+        return open(path)
+    except OSError as exc:
+        raise SystemExit(f"Cannot open file {path!r}: {exc.strerror}") from exc
+
+
 def main(argv: list[str] | None = None) -> None:
     parser = build_parser()
     args = parser.parse_args(argv)
 
-    fh = open(args.file) if args.file else sys.stdin
+    fh = open_input(args.file)
     try:
         patterns = parse_patterns(args.patterns)
         records = iter_records(fh)
