@@ -1,73 +1,71 @@
-"""Command-line entry point for logslice."""
+"""Command-line interface for logslice."""
+from __future__ import annotations
 
 import argparse
 import sys
-from typing import Optional
 
 from logslice.reader import iter_records
-from logslice.filter import parse_timestamp, filter_records
-from logslice.output import write_records, OutputFormat
+from logslice.filter import filter_records
+from logslice.output import write_records
+from logslice.stats import compute_stats, format_stats
+from logslice.aggregate import count_by, format_count_table
 
 
 def build_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(
         prog="logslice",
-        description="Filter and slice structured log files by time range or field patterns.",
+        description="Filter and slice structured log files.",
     )
-    p.add_argument("file", nargs="?", help="Log file to read (default: stdin)")
-    p.add_argument("--from", dest="from_ts", metavar="TIMESTAMP",
-                   help="Include records at or after this timestamp")
-    p.add_argument("--to", dest="to_ts", metavar="TIMESTAMP",
-                   help="Include records at or before this timestamp")
-    p.add_argument("--match", metavar="FIELD=PATTERN", action="append", default=[],
-                   help="Filter by field pattern (repeatable)")
-    p.add_argument("--format", dest="fmt", choices=["json", "logfmt", "raw"],
-                   default="json", help="Output format (default: json)")
-    p.add_argument("--ts-field", dest="ts_field", default="ts",
-                   help="Name of the timestamp field (default: ts)")
+    p.add_argument("file", nargs="?", help="Log file (default: stdin)")
+    p.add_argument("--from", dest="from_ts", metavar="TS", help="Start timestamp (inclusive)")
+    p.add_argument("--to", dest="to_ts", metavar="TS", help="End timestamp (inclusive)")
+    p.add_argument("-p", "--pattern", dest="patterns", action="append", metavar="FIELD=VALUE",
+                   help="Filter field=value pattern (repeatable)")
+    p.add_argument("-f", "--format", dest="fmt", choices=["json", "logfmt", "raw"],
+                   default="json", help="Output format")
+    p.add_argument("--stats", action="store_true", help="Print summary statistics instead of records")
+    p.add_argument("--count-by", dest="count_by", metavar="FIELD",
+                   help="Print record counts grouped by FIELD")
     return p
 
 
-def parse_patterns(match_args: list[str]) -> dict[str, str]:
-    patterns: dict[str, str] = {}
-    for item in match_args:
+def parse_patterns(raw: list[str] | None) -> list[tuple[str, str]]:
+    patterns = []
+    for item in raw or []:
         if "=" not in item:
-            raise ValueError(f"--match value must be FIELD=PATTERN, got: {item!r}")
-        field, _, pattern = item.partition("=")
-        patterns[field.strip()] = pattern.strip()
+            raise SystemExit(f"Invalid pattern (expected field=value): {item!r}")
+        field, _, value = item.partition("=")
+        patterns.append((field.strip(), value.strip()))
     return patterns
 
 
-def main(argv: Optional[list[str]] = None) -> int:
+def main(argv: list[str] | None = None) -> None:
     parser = build_parser()
     args = parser.parse_args(argv)
 
-    from_dt = parse_timestamp(args.from_ts) if args.from_ts else None
-    to_dt = parse_timestamp(args.to_ts) if args.to_ts else None
-
+    fh = open(args.file) if args.file else sys.stdin
     try:
-        patterns = parse_patterns(args.match)
-    except ValueError as exc:
-        print(f"error: {exc}", file=sys.stderr)
-        return 2
-
-    source = open(args.file) if args.file else sys.stdin  # noqa: SIM115
-    try:
-        records = iter_records(source)
-        filtered = filter_records(
+        patterns = parse_patterns(args.patterns)
+        records = iter_records(fh)
+        records = filter_records(
             records,
-            from_time=from_dt,
-            to_time=to_dt,
+            from_ts=args.from_ts,
+            to_ts=args.to_ts,
             patterns=patterns,
-            ts_field=args.ts_field,
         )
-        write_records(filtered, fmt=args.fmt)
+
+        if args.stats:
+            stats = compute_stats(records)
+            print(format_stats(stats))
+        elif args.count_by:
+            counter = count_by(records, args.count_by)
+            print(format_count_table(counter, title=args.count_by))
+        else:
+            write_records(records, fmt=args.fmt)
     finally:
         if args.file:
-            source.close()
-
-    return 0
+            fh.close()
 
 
-if __name__ == "__main__":  # pragma: no cover
-    sys.exit(main())
+if __name__ == "__main__":
+    main()
