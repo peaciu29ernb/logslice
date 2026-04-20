@@ -10,6 +10,16 @@ def iter_records(path: Optional[str] = None) -> Iterator[dict]:
     Yield parsed log records from *path* (or stdin if path is None/'-').
     Lines that cannot be parsed are skipped.
     Each yielded dict also contains '_raw' with the original line.
+
+    Args:
+        path: Path to the log file, or None/'-' to read from stdin.
+
+    Yields:
+        Parsed log record dicts with an added '_raw' key containing the
+        original (un-stripped) line text.
+
+    Raises:
+        OSError: If *path* cannot be opened for reading.
     """
     if path is None or path == '-':
         source = sys.stdin
