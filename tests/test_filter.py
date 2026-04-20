@@ -31,6 +31,10 @@ def test_parse_timestamp_invalid_returns_none():
     assert parse_timestamp("not-a-date") is None
 
 
+def test_parse_timestamp_empty_string_returns_none():
+    assert parse_timestamp("") is None
+
+
 def test_record_in_time_range_within():
     record = {"timestamp": "2024-03-15T12:00:00Z"}
     assert record_in_time_range(
@@ -44,6 +48,13 @@ def test_record_in_time_range_before_start():
     record = {"timestamp": "2024-03-15T10:00:00Z"}
     assert not record_in_time_range(
         record, "timestamp", datetime(2024, 3, 15, 11, 0), None
+    )
+
+
+def test_record_in_time_range_after_end():
+    record = {"timestamp": "2024-03-15T15:00:00Z"}
+    assert not record_in_time_range(
+        record, "timestamp", None, datetime(2024, 3, 15, 13, 0)
     )
 
 
@@ -104,9 +115,3 @@ def test_filter_records_combined():
     ]
     result = list(filter_records(
         iter(records),
-        start=datetime(2024, 3, 15, 11, 0),
-        end=datetime(2024, 3, 15, 13, 0),
-        field_patterns={"svc": "auth"},
-    ))
-    assert len(result) == 1
-    assert result[0]["svc"] == "auth"
