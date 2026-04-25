@@ -39,3 +39,23 @@ def extract_diff_kwargs(args: argparse.Namespace) -> dict[str, Any]:
         "diff_ignore": getattr(args, "diff_ignore", []),
         "diff_only_changed": getattr(args, "diff_only_changed", False),
     }
+
+
+def validate_diff_kwargs(kwargs: dict[str, Any]) -> None:
+    """Validate diff-related kwargs for logical consistency.
+
+    Raises:
+        ValueError: If ``diff_file`` is provided without ``diff_key``, or if
+            ``diff_only_changed`` or ``diff_ignore`` are set without ``diff_file``.
+    """
+    has_file = bool(kwargs.get("diff_file"))
+    has_key = bool(kwargs.get("diff_key"))
+
+    if has_file and not has_key:
+        raise ValueError("--diff-key is required when --diff-file is specified.")
+    if not has_file and has_key:
+        raise ValueError("--diff-file is required when --diff-key is specified.")
+    if not has_file and kwargs.get("diff_only_changed"):
+        raise ValueError("--diff-only-changed requires --diff-file to be specified.")
+    if not has_file and kwargs.get("diff_ignore"):
+        raise ValueError("--diff-ignore requires --diff-file to be specified.")
