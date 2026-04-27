@@ -36,6 +36,25 @@ def register_redact_args(parser: argparse.ArgumentParser) -> None:
     )
 
 
+def validate_redact_args(args: argparse.Namespace) -> None:
+    """Validate that redaction arguments are consistent.
+
+    Raises:
+        argparse.ArgumentError: If --mask-pattern is given without --mask-field,
+            or --mask-field is given without --mask-pattern.
+    """
+    has_field = args.mask_field is not None
+    has_pattern = args.mask_pattern is not None
+    if has_field and not has_pattern:
+        raise argparse.ArgumentTypeError(
+            "--mask-field requires --mask-pattern to also be specified."
+        )
+    if has_pattern and not has_field:
+        raise argparse.ArgumentTypeError(
+            "--mask-pattern requires --mask-field to also be specified."
+        )
+
+
 def extract_redact_kwargs(args: argparse.Namespace) -> Dict[str, Any]:
     """Extract redaction kwargs from parsed CLI arguments."""
     return {
