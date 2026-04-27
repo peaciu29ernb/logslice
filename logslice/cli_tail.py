@@ -32,3 +32,16 @@ def extract_tail_kwargs(args: argparse.Namespace) -> dict[str, Any]:
         "tail": getattr(args, "tail", None),
         "follow": getattr(args, "follow", False),
     }
+
+
+def validate_tail_args(args: argparse.Namespace) -> None:
+    """Validate tail/follow argument combinations and raise on invalid input.
+
+    Raises:
+        argparse.ArgumentTypeError: if ``--tail`` is given a non-positive value.
+    """
+    tail = getattr(args, "tail", None)
+    if tail is not None and tail < 1:
+        raise argparse.ArgumentTypeError(
+            f"--tail requires a positive integer, got {tail!r}"
+        )
