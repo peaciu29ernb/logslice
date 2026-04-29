@@ -53,6 +53,24 @@ def is_mask_active(args: argparse.Namespace) -> bool:
     return bool(getattr(args, "mask_fields", [])) or bool(getattr(args, "mask_pattern", None))
 
 
+def validate_mask_args(args: argparse.Namespace) -> None:
+    """Validate mask-related arguments, raising ArgumentTypeError on invalid input.
+
+    Checks:
+    - ``--mask-show-first`` and ``--mask-show-last`` must be non-negative.
+    - ``--mask-char`` must be exactly one character.
+    - ``--mask-replacement`` is only meaningful when ``--mask-pattern`` is set.
+    """
+    if args.mask_show_first < 0:
+        raise argparse.ArgumentTypeError("--mask-show-first must be a non-negative integer.")
+    if args.mask_show_last < 0:
+        raise argparse.ArgumentTypeError("--mask-show-last must be a non-negative integer.")
+    if len(args.mask_char) != 1:
+        raise argparse.ArgumentTypeError("--mask-char must be exactly one character.")
+    if args.mask_replacement != "[MASKED]" and not args.mask_pattern:
+        raise argparse.ArgumentTypeError("--mask-replacement requires --mask-pattern to be set.")
+
+
 def extract_mask_kwargs(args: argparse.Namespace) -> Dict[str, Any]:
     """Extract mask-related kwargs from parsed args for mask_records()."""
     return {
