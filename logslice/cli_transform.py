@@ -8,6 +8,9 @@ def parse_rename_args(args: List[str]) -> Dict[str, str]:
 
     Example:
         ['msg=message', 'ts=timestamp'] -> {'msg': 'message', 'ts': 'timestamp'}
+
+    Raises:
+        ValueError: If any arg is missing '=', or has an empty key or value.
     """
     mapping = {}
     for arg in args:
@@ -17,6 +20,8 @@ def parse_rename_args(args: List[str]) -> Dict[str, str]:
         old, new = old.strip(), new.strip()
         if not old or not new:
             raise ValueError(f"Rename spec has empty key or value: {arg!r}")
+        if old in mapping:
+            raise ValueError(f"Duplicate rename source field: {old!r}")
         mapping[old] = new
     return mapping
 
